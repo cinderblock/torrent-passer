@@ -19,6 +19,7 @@ import type {
 	TorrentInfo,
 } from "./rpc";
 import type { LoadedTorrent } from "./torrent";
+import { getLinuxParentArgs } from "./linux-parent-cmdline";
 import { readTorrent, resolveTorrentArg } from "./torrent";
 import { getWindowsParentArgs } from "./win-parent-cmdline";
 
@@ -55,11 +56,17 @@ function ingestTorrent(path: string): void {
 }
 
 let initialArg = resolveTorrentArg(process.argv.slice(2));
-// On Windows the launcher swallows the file-association arg before bun runs,
-// but it survives in the launcher (parent) process's command line. Recover
-// it from there when our own argv came up empty.
-if (!initialArg && process.platform === "win32") {
-	const parentArgs = getWindowsParentArgs();
+// On Windows and Linux the launcher swallows the file-association arg before
+// bun runs (blackboardsh/electrobun#483), but it survives in the launcher
+// (parent) process's command line. Recover it from there when our own argv
+// came up empty. macOS delivers file opens via the open-url event instead.
+if (!initialArg) {
+	const parentArgs =
+		process.platform === "win32"
+			? getWindowsParentArgs()
+			: process.platform === "linux"
+				? getLinuxParentArgs()
+				: [];
 	const fromParent = resolveTorrentArg(parentArgs);
 	if (fromParent) {
 		console.log(`[torrent-passer] recovered torrent from parent cmdline: ${fromParent}`);

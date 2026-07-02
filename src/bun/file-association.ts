@@ -1,18 +1,24 @@
 import { spawn, type SpawnOptions } from "node:child_process";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import type { FileAssociationStatus } from "./rpc";
 
 const PROG_ID = "torrent-passer.File";
 const REG_BASE = "HKCU\\Software\\Classes";
+const DESKTOP_ID = "torrent-passer.desktop";
+const MIME_TYPE = "application/x-bittorrent";
 
 function launcherPath(): string {
-	// process.execPath is bun.exe (under <bundle>/bin/). The launcher sibling
-	// is the actual file the OS should be told to invoke for double-clicks.
-	return join(dirname(process.execPath), "launcher.exe");
+	// process.execPath is bun[.exe] (under <bundle>/bin/). The launcher
+	// sibling is the actual file the OS should be told to invoke for
+	// double-clicks.
+	const name = process.platform === "win32" ? "launcher.exe" : "launcher";
+	return join(dirname(process.execPath), name);
 }
 
 function isDevBuild(): boolean {
-	// Dev builds live at .../build/dev-<arch>/<app>/bin/bun.exe — the
+	// Dev builds live at .../build/dev-<arch>/<app>/bin/bun[.exe] — the
 	// "/build/dev-" segment is the reliable marker. Stable installs
 	// land in Program Files / %LOCALAPPDATA%\Programs and don't have it.
 	const p = process.execPath;
@@ -141,8 +147,108 @@ function notifyShellChange(): void {
 	]);
 }
 
+// ---- Linux: user-scope .desktop entry + xdg-mime default ------------------
+
+function linuxApplicationsDir(): string {
+	const dataHome =
+		process.env["XDG_DATA_HOME"] || join(homedir(), ".local", "share");
+	return join(dataHome, "applications");
+}
+
+async function getLinuxStatus(): Promise<FileAssociationStatus> {
+	const dev = isDevBuild();
+	const expected = launcherPath();
+	const desktopFile = join(linuxApplicationsDir(), DESKTOP_ID);
+	let exec: string | null = null;
+	try {
+		const content = await readFile(desktopFile, "utf8");
+		exec = /^Exec=(.+)$/m.exec(content)?.[1]?.trim() ?? null;
+	} catch {
+		// No desktop file — not installed.
+	}
+	if (!exec || !exec.includes(expected)) {
+		return {
+			platform: "linux",
+			supported: !dev,
+			installed: false,
+			detail: dev
+				? "Dev build — install a release before registering this"
+				: exec
+					? `Desktop entry points elsewhere: ${exec}`
+					: "No association registered",
+		};
+	}
+	const q = await execCapture("xdg-mime", ["query", "default", MIME_TYPE]);
+	const current = q.stdout.trim();
+	if (!q.ok || current !== DESKTOP_ID) {
+		return {
+			platform: "linux",
+			supported: !dev,
+			installed: false,
+			detail: current
+				? `.torrent currently handled by ${current}`
+				: "Desktop entry exists but is not the xdg-mime default",
+		};
+	}
+	return {
+		platform: "linux",
+		supported: !dev,
+		installed: true,
+		detail: dev ? `${expected} (dev build path)` : expected,
+	};
+}
+
+async function installLinux(): Promise<FileAssociationStatus> {
+	const exe = launcherPath();
+	const dir = linuxApplicationsDir();
+	const content = `[Desktop Entry]
+Version=1.0
+Type=Application
+Name=torrent-passer
+Comment=Forward .torrent files to a configurable destination
+Exec="${exe}" %f
+Terminal=false
+MimeType=${MIME_TYPE};
+Categories=Utility;Network;
+`;
+	try {
+		await mkdir(dir, { recursive: true });
+		await writeFile(join(dir, DESKTOP_ID), content);
+	} catch (err) {
+		return {
+			platform: "linux",
+			supported: true,
+			installed: false,
+			detail: `Failed to write ${join(dir, DESKTOP_ID)}: ${err}`,
+		};
+	}
+	const ok = (await execCapture("xdg-mime", ["default", DESKTOP_ID, MIME_TYPE]))
+		.ok;
+	// Best-effort cache refresh; older desktops pick the entry up without it.
+	void execCapture("update-desktop-database", [dir]);
+	if (!ok) {
+		return {
+			platform: "linux",
+			supported: true,
+			installed: false,
+			detail: "xdg-mime default failed — is xdg-utils installed?",
+		};
+	}
+	return getLinuxStatus();
+}
+
+async function uninstallLinux(): Promise<FileAssociationStatus> {
+	const dir = linuxApplicationsDir();
+	await rm(join(dir, DESKTOP_ID), { force: true });
+	void execCapture("update-desktop-database", [dir]);
+	return getLinuxStatus();
+}
+
+// ---- Platform dispatch ------------------------------------------------------
+
 export async function getFileAssociationStatus(): Promise<FileAssociationStatus> {
 	if (process.platform === "win32") return getWindowsStatus();
+	if (process.platform === "linux") return getLinuxStatus();
 	if (process.platform === "darwin") {
 		return {
 			platform: "darwin",
@@ -161,10 +267,12 @@ export async function getFileAssociationStatus(): Promise<FileAssociationStatus>
 
 export async function installFileAssociation(): Promise<FileAssociationStatus> {
 	if (process.platform === "win32") return installWindows();
+	if (process.platform === "linux") return installLinux();
 	return getFileAssociationStatus();
 }
 
 export async function uninstallFileAssociation(): Promise<FileAssociationStatus> {
 	if (process.platform === "win32") return uninstallWindows();
+	if (process.platform === "linux") return uninstallLinux();
 	return getFileAssociationStatus();
 }

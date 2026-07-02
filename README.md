@@ -8,7 +8,10 @@ WebView2 on Windows) for a small binary and fast cold start.
 
 ## Status
 
-- Windows-first (works wherever Electrobun runs).
+- Cross-platform: Windows, Linux, and macOS builds via CI (Windows is the
+  most battle-tested). Download from
+  [Releases](https://github.com/cinderblock/torrent-passer/releases), or grab
+  a recent CI run's artifacts.
 - Destination drivers:
   - **POST URL** — `multipart/form-data` with the torrent file in a configurable
     form field, plus arbitrary headers and extra form fields.
@@ -31,16 +34,32 @@ bun run dev            # dev build with file watcher
 bun run typecheck
 bun run build          # dev bundle into ./build
 bunx electrobun build --env=stable   # minified production build,
-                                     #   ~32 MB self-extracting Setup.exe
+                                     #   ~32 MB self-extracting installer
 ```
+
+Electrobun builds for the host platform only. CI
+([build.yml](.github/workflows/build.yml)) builds Windows x64, Linux
+x64/arm64, and macOS arm64/x64 on every push to `main` (artifacts kept 7
+days) and attaches them to a GitHub release on `v*` tags.
 
 ## Wiring up the `.torrent` file association
 
 Electrobun's built-in `app.fileAssociations` is macOS-only today. On Windows
-the app shows an **Install .torrent association** button in the footer that
-writes user-scope `HKCU\Software\Classes` keys via `reg.exe`. Click it once
-and the OS will route double-clicks at `torrent-passer.exe`. (Linux isn't
-wired up yet — it would need a `.desktop` file + `xdg-mime`.)
+and Linux the app shows an **Install .torrent association** button in the
+footer that registers a user-scope handler:
+
+- **Windows** — `HKCU\Software\Classes` keys via `reg.exe`.
+- **Linux** — a `.desktop` entry in `$XDG_DATA_HOME/applications` plus
+  `xdg-mime default … application/x-bittorrent` (requires `xdg-utils`).
+
+Click it once and the OS will route double-clicks at the app.
+
+Electrobun's launcher currently drops its CLI arguments before the app sees
+them ([electrobun#483](https://github.com/blackboardsh/electrobun/issues/483)),
+so on Windows and Linux the app recovers the double-clicked path from the
+parent launcher process's command line (`src/bun/win-parent-cmdline.ts`,
+`src/bun/linux-parent-cmdline.ts`). Once that issue is fixed upstream these
+workarounds can be deleted.
 
 If you'd rather do it by hand on Windows, this PowerShell snippet is what the
 button runs:
