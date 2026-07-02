@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>torrent-passer</title>
+		<link rel="stylesheet" href="index.css" />
+		<script type="module" src="index.js"></script>
+	</head>
+	<body>
+		<!-- Empty state (no torrent loaded) -->
+		<section id="empty-state" class="empty-state">
+			<button
+				id="empty-pick-btn"
+				type="button"
+				class="big-picker"
+				title="Open a .torrent file"
+			>
+				<div class="big-picker-icon">📂</div>
+				<div class="big-picker-title">Open a .torrent file</div>
+				<div class="big-picker-sub muted small">Click to pick · Esc to close</div>
+			</button>
+			<button
+				id="empty-edit-btn"
+				type="button"
+				class="icon-btn empty-edit"
+				title="Manage destinations"
+			>
+				⚙
+			</button>
+		</section>
+
+		<!-- Loaded state (torrent picked) -->
+		<section id="loaded-state" class="loaded-state" hidden>
+			<header>
+				<div class="header-row">
+					<div class="header-text">
+						<div id="torrent-name" class="muted">Loading…</div>
+						<div id="torrent-meta" class="muted small"></div>
+					</div>
+					<button
+						id="open-torrent-btn"
+						class="icon-btn"
+						title="Open a different .torrent"
+					>
+						📂
+					</button>
+				</div>
+			</header>
+
+			<main>
+				<ol id="destinations" aria-label="Destinations"></ol>
+				<p id="empty-list" class="empty" hidden>No destinations yet — click + to add one</p>
+			</main>
+
+			<footer>
+				<div class="footer-left">
+					<button id="edit-toggle-btn" class="icon-btn" title="Edit destinations">⚙</button>
+					<button
+						id="add-dest-btn"
+						type="button"
+						class="icon-btn"
+						title="Add destination"
+						hidden
+					>
+						+
+					</button>
+				</div>
+				<div id="footer-right">
+					<span id="hint" class="muted small">
+						↑↓ navigate · Enter to send · 1-9 quick pick
+					</span>
+					<button id="assoc-btn" type="button" class="link" hidden></button>
+				</div>
+			</footer>
+		</section>
+
+		<!-- The form lives parked here when no row is being edited; the JS
+		     moves it into a row's .dest-drawer-slot when the user clicks
+		     Edit on a row or + Add. Single instance, preserves field
+		     state during the move. -->
+		<form id="editor-form" class="editor-form" autocomplete="off" hidden>
+				<div class="editor-body">
+					<div class="field-row">
+						<label class="field">
+							<span class="field-label">Name</span>
+							<input id="f-name" type="text" placeholder="e.g. Home server" />
+						</label>
+						<label class="field">
+							<span class="field-label">Type</span>
+							<select id="f-kind">
+								<option value="post-url">POST URL</option>
+								<option value="deluge-web">Deluge WebUI</option>
+								<option value="deluge-daemon">Deluge daemon</option>
+							</select>
+						</label>
+					</div>
+
+					<div data-fields="post-url" class="fields">
+						<label class="field">
+							<span class="field-label">URL</span>
+							<input id="pu-url" type="text" placeholder="https://example.com/ingest" />
+						</label>
+						<label class="field">
+							<span class="field-label">Form field name</span>
+							<input id="pu-field" type="text" placeholder="file" />
+						</label>
+						<label class="field">
+							<span class="field-label">Headers (one per line, <code>Name: value</code>)</span>
+							<textarea id="pu-headers" rows="3" placeholder="Authorization: Bearer ..."></textarea>
+						</label>
+						<label class="field">
+							<span class="field-label">Extra form fields (one per line, <code>key=value</code>)</span>
+							<textarea id="pu-extra" rows="2"></textarea>
+						</label>
+						<label class="check">
+							<input id="pu-insecure" type="checkbox" /> Allow self-signed certificates
+						</label>
+					</div>
+
+					<div data-fields="deluge-web" class="fields" hidden>
+						<label class="field">
+							<span class="field-label">WebUI URL</span>
+							<input id="dw-url" type="text" placeholder="http://host:8112" />
+						</label>
+						<label class="field">
+							<span class="field-label">Password</span>
+							<input id="dw-pass" type="password" />
+						</label>
+						<label class="field">
+							<span class="field-label">Default download location <span class="muted small">(optional)</span></span>
+							<input id="dw-loc" type="text" placeholder="/data/downloads" />
+						</label>
+						<label class="check">
+							<input id="dw-paused" type="checkbox" /> Add paused
+						</label>
+						<label class="check">
+							<input id="dw-insecure" type="checkbox" /> Allow self-signed certificates
+						</label>
+					</div>
+
+					<div data-fields="deluge-daemon" class="fields" hidden>
+						<div class="field-row">
+							<label class="field">
+								<span class="field-label">Host</span>
+								<input id="dd-host" type="text" placeholder="deluge.local" />
+							</label>
+							<label class="field field-narrow">
+								<span class="field-label">Port</span>
+								<input id="dd-port" type="number" value="58846" />
+							</label>
+						</div>
+						<div class="field-row">
+							<label class="field">
+								<span class="field-label">Username</span>
+								<input id="dd-user" type="text" />
+							</label>
+							<label class="field">
+								<span class="field-label">Password</span>
+								<input id="dd-pass" type="password" />
+							</label>
+						</div>
+						<label class="field">
+							<span class="field-label">Default download location <span class="muted small">(optional)</span></span>
+							<input id="dd-loc" type="text" />
+						</label>
+						<label class="field">
+							<span class="field-label">Protocol version</span>
+							<select id="dd-proto">
+								<option value="auto">Auto (probe TLS, fall back to TCP)</option>
+								<option value="1">Deluge 2.x (TLS)</option>
+								<option value="0">Deluge 1.x (plain TCP)</option>
+							</select>
+						</label>
+						<label class="check">
+							<input id="dd-paused" type="checkbox" /> Add paused
+						</label>
+						<label class="check">
+							<input id="dd-insecure" type="checkbox" /> Allow self-signed certificates
+						</label>
+					</div>
+				</div>
+
+				<div class="editor-actions">
+					<button id="editor-delete" type="button" class="danger-link" hidden>
+						Delete
+					</button>
+					<div class="editor-actions-right">
+						<button id="editor-cancel" type="button">Cancel</button>
+						<button id="editor-save" type="submit" class="primary">Save</button>
+					</div>
+				</div>
+		</form>
+
+		<div id="toast" class="toast" hidden></div>
+	</body>
+</html>
