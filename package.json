@@ -1,6 +1,6 @@
 {
 	"name": "torrent-passer",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"description": "Tiny GUI that opens when you double-click a .torrent file and forwards it to a configurable destination (POST URL or Deluge).",
 	"private": true,
 	"scripts": {

@@ -85,6 +85,22 @@ On macOS, the standard `app.fileAssociations` config in `electrobun.config.ts`
 generates the `CFBundleDocumentTypes` entries automatically — no in-app button
 needed.
 
+## Updates
+
+Stable builds self-update via Electrobun's built-in updater. On launch the app
+checks `releases/latest/download/…-update.json` (GitHub always redirects that
+path to the newest release), and when a newer build is available an **Update**
+button appears in the footer. Clicking it downloads and installs, then
+relaunches into the new version.
+
+CI generates a delta patch against the previous release at build time, so the
+common case is a tiny download (the v0.3.0 → v0.4.0 patch is ~69 KB) with a
+full-bundle fallback when no patch applies. Dev builds have updates disabled.
+
+Note: macOS builds are currently unsigned, so the first launch needs
+right-click → Open, and self-update on macOS is best-effort until signing is
+set up.
+
 ## Config
 
 Destinations live at `%APPDATA%\torrent-passer\config.json` (Windows),

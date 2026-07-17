@@ -14,6 +14,7 @@ import type {
 	RutorrentDestination,
 	TorrentInfo,
 	TransmissionDestination,
+	UpdateStatus,
 	UtorrentDestination,
 } from "../bun/rpc";
 
@@ -41,6 +42,10 @@ const rpc = Electroview.defineRPC<AppRPC>({
 				view.torrent = torrent;
 				view.render();
 			},
+			updateChanged: ({ status }: { status: UpdateStatus }) => {
+				view.update = status;
+				renderUpdate();
+			},
 		},
 	},
 });
@@ -53,6 +58,7 @@ interface ViewState {
 	config: Config;
 	preflight: Map<string, PreflightStatus>;
 	fileAssociation: FileAssociationStatus | null;
+	update: UpdateStatus | null;
 	selectedIndex: number;
 	pending: boolean;
 	pickerOpen: boolean;
@@ -67,6 +73,7 @@ const view: ViewState = {
 	config: { destinations: [] },
 	preflight: new Map(),
 	fileAssociation: null,
+	update: null,
 	selectedIndex: 0,
 	pending: false,
 	pickerOpen: false,
@@ -97,6 +104,7 @@ const els = {
 	editToggleBtn: byId<HTMLButtonElement>("edit-toggle-btn"),
 	hint: byId<HTMLElement>("hint"),
 	assocBtn: byId<HTMLButtonElement>("assoc-btn"),
+	updateBtn: byId<HTMLButtonElement>("update-btn"),
 	openTorrentBtn: byId<HTMLButtonElement>("open-torrent-btn"),
 	form: byId<HTMLFormElement>("editor-form"),
 	editorSave: byId<HTMLButtonElement>("editor-save"),
@@ -166,6 +174,7 @@ els.form.addEventListener("submit", (e) => {
 });
 els.fKind.addEventListener("change", showKindFields);
 els.assocBtn.addEventListener("click", () => void toggleAssoc());
+els.updateBtn.addEventListener("click", () => void onUpdateClick());
 
 document.addEventListener("keydown", (e) => {
 	if (view.pending) return;
@@ -769,6 +778,70 @@ async function toggleAssoc(): Promise<void> {
 	}
 }
 
+// ---- Self-update affordance (footer button) -----------------------------
+
+async function onUpdateClick(): Promise<void> {
+	const u = view.update;
+	if (!u) return;
+	if (u.phase === "error" && !u.updateAvailable) {
+		// Nothing downloaded yet — a failed check. Re-check.
+		await rpc.request.checkForUpdate();
+		return;
+	}
+	if (u.phase === "available" || u.phase === "error") {
+		// Kick off download + install. Progress arrives via updateChanged
+		// messages; on success the app relaunches into the new version.
+		void rpc.request.installUpdate().then((res) => {
+			if (!res.ok && res.error) showToast(`Update failed: ${res.error}`, "err");
+		});
+	}
+}
+
+function renderUpdate(): void {
+	const u = view.update;
+	const btn = els.updateBtn;
+	if (!u || !u.supported) {
+		btn.hidden = true;
+		return;
+	}
+	switch (u.phase) {
+		case "available":
+			btn.hidden = false;
+			btn.disabled = false;
+			btn.textContent = u.latestVersion
+				? `⬆ Update to v${u.latestVersion}`
+				: "⬆ Update available";
+			btn.title = "Download and install the update, then restart";
+			break;
+		case "downloading":
+			btn.hidden = false;
+			btn.disabled = true;
+			btn.textContent =
+				u.progress !== undefined
+					? `Downloading update… ${u.progress}%`
+					: "Downloading update…";
+			btn.title = u.detail ?? "";
+			break;
+		case "installing":
+			btn.hidden = false;
+			btn.disabled = true;
+			btn.textContent = "Installing… app will restart";
+			btn.title = u.detail ?? "";
+			break;
+		case "error":
+			btn.hidden = false;
+			btn.disabled = false;
+			btn.textContent = u.updateAvailable
+				? "⚠ Update failed — retry"
+				: "⚠ Update check failed — retry";
+			btn.title = u.detail ?? "";
+			break;
+		default:
+			// idle / checking — nothing worth showing.
+			btn.hidden = true;
+	}
+}
+
 function renderFooter(): void {
 	const s = view.fileAssociation;
 	if (view.editMode && s && s.supported) {
@@ -861,6 +934,7 @@ function render(): void {
 
 	renderList();
 	renderFooter();
+	renderUpdate();
 }
 
 let currentState: "empty" | "loaded" | null = null;
@@ -1116,6 +1190,7 @@ function vlog(msg: string): void {
 	view.torrent = initial.torrent;
 	view.config = initial.config;
 	view.fileAssociation = initial.fileAssociation;
+	view.update = initial.update;
 	for (const p of initial.preflight) view.preflight.set(p.destinationId, p);
 	if (view.config.lastUsedId) {
 		const idx = view.config.destinations.findIndex(

@@ -17,10 +17,18 @@ import type {
 	InitialState,
 	PreflightStatus,
 	TorrentInfo,
+	UpdateStatus,
 } from "./rpc";
-import type { LoadedTorrent } from "./torrent";
 import { getLinuxParentArgs } from "./linux-parent-cmdline";
+import type { LoadedTorrent } from "./torrent";
 import { readTorrent, resolveTorrentArg } from "./torrent";
+import {
+	checkForUpdate,
+	getUpdateStatus,
+	initUpdateStatus,
+	installUpdate,
+	onUpdateStatus,
+} from "./updater";
 import { getWindowsParentArgs } from "./win-parent-cmdline";
 
 // ---- Mutable state holders -------------------------------------------------
@@ -32,6 +40,7 @@ const state = {
 	preflightResults: new Map<string, PreflightStatus>(),
 	preflightAbort: new AbortController(),
 	fileAssociationPromise: getFileAssociationStatus(),
+	updatePromise: initUpdateStatus(),
 };
 
 const startedAt = performance.now();
@@ -42,7 +51,16 @@ let pushPreflight: (status: PreflightStatus) => void = () => {};
 let pushConfigChanged: (config: Config) => void = () => {};
 let pushFileAssociation: (status: FileAssociationStatus) => void = () => {};
 let pushTorrentChanged: (torrent: TorrentInfo | null) => void = () => {};
+let pushUpdateChanged: (status: UpdateStatus) => void = () => {};
 let closeMainWindow: () => void = () => {};
+
+// Stream updater status changes to the view, and once the initial local info
+// is loaded, kick off a non-blocking check so an available update can surface
+// without the user asking.
+onUpdateStatus((status) => pushUpdateChanged(status));
+void state.updatePromise.then((status) => {
+	if (status.supported) void checkForUpdate();
+});
 
 // ---- Kick off parallel work ASAP -------------------------------------------
 
@@ -109,11 +127,13 @@ const rpc = defineElectrobunRPC<AppRPC, "bun">("bun", {
 				// Resolve the things we need to render. Preflight is NOT awaited —
 				// results stream in via preflightUpdate messages so a slow Deluge
 				// can't gate the picker UI.
-				const [config, torrent, fileAssociation] = await Promise.all([
-					state.configPromise,
-					state.torrentPromise,
-					state.fileAssociationPromise,
-				]);
+				const [config, torrent, fileAssociation, update] =
+					await Promise.all([
+						state.configPromise,
+						state.torrentPromise,
+						state.fileAssociationPromise,
+						state.updatePromise,
+					]);
 				console.log(
 					`[torrent-passer] initialState ready at +${(
 						performance.now() - startedAt
@@ -124,6 +144,7 @@ const rpc = defineElectrobunRPC<AppRPC, "bun">("bun", {
 					config,
 					preflight: Array.from(state.preflightResults.values()),
 					fileAssociation,
+					update,
 				};
 			},
 			async upload({ destinationId }) {
@@ -185,6 +206,15 @@ const rpc = defineElectrobunRPC<AppRPC, "bun">("bun", {
 				const loaded = await state.torrentPromise;
 				return loaded?.info ?? null;
 			},
+			async checkForUpdate(): Promise<UpdateStatus> {
+				await checkForUpdate();
+				return getUpdateStatus();
+			},
+			async installUpdate() {
+				// On success this quits and relaunches into the new version, so
+				// the view usually never sees this response resolve.
+				return installUpdate();
+			},
 			async logToBun({ msg }: { msg: string }) {
 				console.log(`[view] ${msg}`);
 			},
@@ -209,6 +239,8 @@ pushFileAssociation = (status) =>
 	mainWindow.webview.rpc?.send.fileAssociationChanged({ status });
 pushTorrentChanged = (torrent) =>
 	mainWindow.webview.rpc?.send.torrentChanged({ torrent });
+pushUpdateChanged = (status) =>
+	mainWindow.webview.rpc?.send.updateChanged({ status });
 closeMainWindow = () => mainWindow.close();
 
 console.log(

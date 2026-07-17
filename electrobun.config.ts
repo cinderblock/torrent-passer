@@ -22,7 +22,7 @@ export default {
 	app: {
 		name: "torrent-passer",
 		identifier: "dev.torrentpasser.app",
-		version: "0.3.0",
+		version: "0.4.0",
 		description:
 			"Forward .torrent files to a configurable destination (POST URL or Deluge).",
 		// File associations are macOS-only in Electrobun today.
@@ -51,5 +51,15 @@ export default {
 		mac: { bundleCEF: false },
 		linux: { bundleCEF: false },
 		win: { bundleCEF: false },
+	},
+	// Self-update: the Updater fetches `{baseUrl}/{channel}-{os}-{arch}-update.json`
+	// and the matching `.tar.zst` bundle. GitHub's `releases/latest/download/`
+	// path always redirects to the newest release's assets (and fetch follows
+	// the redirect), so no separate update server is needed — the CI release
+	// job's assets are the update feed. Delta patches are generated at build
+	// time by diffing against whatever `latest` currently points at.
+	release: {
+		baseUrl:
+			"https://github.com/cinderblock/torrent-passer/releases/latest/download",
 	},
 } satisfies ElectrobunConfig;

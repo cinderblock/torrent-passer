@@ -140,11 +140,32 @@ export interface PreflightStatus {
 	defaultDownloadLocation?: string;
 }
 
+// Self-update lifecycle surfaced to the view. `supported` is false on dev
+// builds (the Electrobun updater disables itself on the "dev" channel).
+export type UpdatePhase =
+	| "idle"
+	| "checking"
+	| "available"
+	| "downloading"
+	| "installing"
+	| "error";
+
+export interface UpdateStatus {
+	supported: boolean;
+	currentVersion: string;
+	updateAvailable: boolean;
+	latestVersion?: string;
+	phase: UpdatePhase;
+	progress?: number; // 0-100 while downloading (undefined if unknown)
+	detail?: string;
+}
+
 export interface InitialState {
 	torrent: TorrentInfo | null;
 	config: Config;
 	preflight: PreflightStatus[];
 	fileAssociation: FileAssociationStatus;
+	update: UpdateStatus;
 }
 
 export type AppRPC = {
@@ -167,6 +188,11 @@ export type AppRPC = {
 				response: FileAssociationStatus;
 			};
 			pickTorrent: { params: void; response: TorrentInfo | null };
+			checkForUpdate: { params: void; response: UpdateStatus };
+			// Downloads then installs the update; on success the app quits and
+			// relaunches into the new version, so the response only returns on
+			// failure (or is never observed).
+			installUpdate: { params: void; response: UploadResult };
 			logToBun: { params: { msg: string }; response: void };
 		};
 		messages: Record<never, unknown>;
@@ -178,6 +204,7 @@ export type AppRPC = {
 			configChanged: { config: Config };
 			fileAssociationChanged: { status: FileAssociationStatus };
 			torrentChanged: { torrent: TorrentInfo | null };
+			updateChanged: { status: UpdateStatus };
 		};
 	};
 };
