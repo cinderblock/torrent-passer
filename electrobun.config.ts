@@ -22,7 +22,7 @@ export default {
 	app: {
 		name: "torrent-passer",
 		identifier: "dev.torrentpasser.app",
-		version: "0.2.0",
+		version: "0.3.0",
 		description:
 			"Forward .torrent files to a configurable destination (POST URL or Deluge).",
 		// File associations are macOS-only in Electrobun today.
