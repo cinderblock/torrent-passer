@@ -89,9 +89,13 @@
 						<label class="field">
 							<span class="field-label">Type</span>
 							<select id="f-kind">
-								<option value="post-url">POST URL</option>
+								<option value="qbittorrent">qBittorrent</option>
+								<option value="transmission">Transmission</option>
 								<option value="deluge-web">Deluge WebUI</option>
 								<option value="deluge-daemon">Deluge daemon</option>
+								<option value="rutorrent">ruTorrent</option>
+								<option value="utorrent">µTorrent (classic)</option>
+								<option value="post-url">POST URL</option>
 							</select>
 						</label>
 					</div>
@@ -115,6 +119,115 @@
 						</label>
 						<label class="check">
 							<input id="pu-insecure" type="checkbox" /> Allow self-signed certificates
+						</label>
+					</div>
+
+					<div data-fields="qbittorrent" class="fields" hidden>
+						<label class="field">
+							<span class="field-label">WebUI URL</span>
+							<input id="qb-url" type="text" placeholder="http://host:8080" />
+						</label>
+						<div class="field-row">
+							<label class="field">
+								<span class="field-label">Username <span class="muted small">(empty = localhost bypass)</span></span>
+								<input id="qb-user" type="text" />
+							</label>
+							<label class="field">
+								<span class="field-label">Password</span>
+								<input id="qb-pass" type="password" />
+							</label>
+						</div>
+						<label class="field">
+							<span class="field-label">Category <span class="muted small">(optional)</span></span>
+							<input id="qb-cat" type="text" />
+						</label>
+						<label class="field">
+							<span class="field-label">Save path <span class="muted small">(optional)</span></span>
+							<input id="qb-loc" type="text" placeholder="/data/downloads" />
+						</label>
+						<label class="check">
+							<input id="qb-paused" type="checkbox" /> Add paused
+						</label>
+						<label class="check">
+							<input id="qb-insecure" type="checkbox" /> Allow self-signed certificates
+						</label>
+					</div>
+
+					<div data-fields="transmission" class="fields" hidden>
+						<label class="field">
+							<span class="field-label">URL <span class="muted small">(rpc path appended unless given)</span></span>
+							<input id="tr-url" type="text" placeholder="http://host:9091" />
+						</label>
+						<div class="field-row">
+							<label class="field">
+								<span class="field-label">Username <span class="muted small">(optional)</span></span>
+								<input id="tr-user" type="text" />
+							</label>
+							<label class="field">
+								<span class="field-label">Password</span>
+								<input id="tr-pass" type="password" />
+							</label>
+						</div>
+						<label class="field">
+							<span class="field-label">Download directory <span class="muted small">(optional)</span></span>
+							<input id="tr-loc" type="text" placeholder="/data/downloads" />
+						</label>
+						<label class="check">
+							<input id="tr-paused" type="checkbox" /> Add paused
+						</label>
+						<label class="check">
+							<input id="tr-insecure" type="checkbox" /> Allow self-signed certificates
+						</label>
+					</div>
+
+					<div data-fields="rutorrent" class="fields" hidden>
+						<label class="field">
+							<span class="field-label">ruTorrent URL</span>
+							<input id="rt-url" type="text" placeholder="http://host/rutorrent" />
+						</label>
+						<div class="field-row">
+							<label class="field">
+								<span class="field-label">Username <span class="muted small">(optional)</span></span>
+								<input id="rt-user" type="text" />
+							</label>
+							<label class="field">
+								<span class="field-label">Password</span>
+								<input id="rt-pass" type="password" />
+							</label>
+						</div>
+						<label class="field">
+							<span class="field-label">Label <span class="muted small">(optional)</span></span>
+							<input id="rt-label" type="text" />
+						</label>
+						<label class="field">
+							<span class="field-label">Download directory <span class="muted small">(optional)</span></span>
+							<input id="rt-loc" type="text" />
+						</label>
+						<label class="check">
+							<input id="rt-paused" type="checkbox" /> Add stopped
+						</label>
+						<label class="check">
+							<input id="rt-insecure" type="checkbox" /> Allow self-signed certificates
+						</label>
+					</div>
+
+					<div data-fields="utorrent" class="fields" hidden>
+						<label class="field">
+							<span class="field-label">WebUI URL <span class="muted small">(/gui appended unless given)</span></span>
+							<input id="ut-url" type="text" placeholder="http://host:8080" />
+						</label>
+						<div class="field-row">
+							<label class="field">
+								<span class="field-label">Username</span>
+								<input id="ut-user" type="text" />
+							</label>
+							<label class="field">
+								<span class="field-label">Password</span>
+								<input id="ut-pass" type="password" />
+							</label>
+						</div>
+						<label class="check">
+							<input id="ut-insecure" type="checkbox" /> Allow self-signed certificates
 						</label>
 					</div>
 

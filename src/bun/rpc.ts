@@ -1,4 +1,11 @@
-export type DestinationKind = "post-url" | "deluge-web" | "deluge-daemon";
+export type DestinationKind =
+	| "post-url"
+	| "deluge-web"
+	| "deluge-daemon"
+	| "qbittorrent"
+	| "transmission"
+	| "rutorrent"
+	| "utorrent";
 
 export interface BaseDestination {
 	id: string;
@@ -39,6 +46,53 @@ export interface DelugeDaemonDestination extends BaseDestination {
 	insecure?: boolean;
 }
 
+export interface QbittorrentDestination extends BaseDestination {
+	kind: "qbittorrent";
+	url: string;
+	// Omit username to use qBittorrent's "bypass authentication for
+	// localhost" mode (no login call is made).
+	username?: string;
+	password?: string;
+	downloadLocation?: string;
+	category?: string;
+	addPaused?: boolean;
+	insecure?: boolean;
+}
+
+export interface TransmissionDestination extends BaseDestination {
+	kind: "transmission";
+	// http://host:9091 — /transmission/rpc is appended unless the URL
+	// already carries a path (for custom rpc-url setups).
+	url: string;
+	username?: string;
+	password?: string;
+	downloadLocation?: string;
+	addPaused?: boolean;
+	insecure?: boolean;
+}
+
+export interface RutorrentDestination extends BaseDestination {
+	kind: "rutorrent";
+	// Base ruTorrent URL, e.g. http://host/rutorrent — the driver posts to
+	// {url}/php/addtorrent.php.
+	url: string;
+	username?: string;
+	password?: string;
+	label?: string;
+	downloadLocation?: string;
+	addPaused?: boolean;
+	insecure?: boolean;
+}
+
+export interface UtorrentDestination extends BaseDestination {
+	kind: "utorrent";
+	// http://host:8080 — /gui is appended unless already present.
+	url: string;
+	username: string;
+	password: string;
+	insecure?: boolean;
+}
+
 export interface FileAssociationStatus {
 	platform: NodeJS.Platform;
 	supported: boolean;
@@ -49,7 +103,11 @@ export interface FileAssociationStatus {
 export type Destination =
 	| PostUrlDestination
 	| DelugeWebDestination
-	| DelugeDaemonDestination;
+	| DelugeDaemonDestination
+	| QbittorrentDestination
+	| TransmissionDestination
+	| RutorrentDestination
+	| UtorrentDestination;
 
 export interface Config {
 	destinations: Destination[];

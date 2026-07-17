@@ -10,7 +10,11 @@ import type {
 	InitialState,
 	PostUrlDestination,
 	PreflightStatus,
+	QbittorrentDestination,
+	RutorrentDestination,
 	TorrentInfo,
+	TransmissionDestination,
+	UtorrentDestination,
 } from "../bun/rpc";
 
 const rpc = Electroview.defineRPC<AppRPC>({
@@ -110,6 +114,30 @@ const els = {
 	dwLoc: byId<HTMLInputElement>("dw-loc"),
 	dwPaused: byId<HTMLInputElement>("dw-paused"),
 	dwInsecure: byId<HTMLInputElement>("dw-insecure"),
+	qbUrl: byId<HTMLInputElement>("qb-url"),
+	qbUser: byId<HTMLInputElement>("qb-user"),
+	qbPass: byId<HTMLInputElement>("qb-pass"),
+	qbCat: byId<HTMLInputElement>("qb-cat"),
+	qbLoc: byId<HTMLInputElement>("qb-loc"),
+	qbPaused: byId<HTMLInputElement>("qb-paused"),
+	qbInsecure: byId<HTMLInputElement>("qb-insecure"),
+	trUrl: byId<HTMLInputElement>("tr-url"),
+	trUser: byId<HTMLInputElement>("tr-user"),
+	trPass: byId<HTMLInputElement>("tr-pass"),
+	trLoc: byId<HTMLInputElement>("tr-loc"),
+	trPaused: byId<HTMLInputElement>("tr-paused"),
+	trInsecure: byId<HTMLInputElement>("tr-insecure"),
+	rtUrl: byId<HTMLInputElement>("rt-url"),
+	rtUser: byId<HTMLInputElement>("rt-user"),
+	rtPass: byId<HTMLInputElement>("rt-pass"),
+	rtLabel: byId<HTMLInputElement>("rt-label"),
+	rtLoc: byId<HTMLInputElement>("rt-loc"),
+	rtPaused: byId<HTMLInputElement>("rt-paused"),
+	rtInsecure: byId<HTMLInputElement>("rt-insecure"),
+	utUrl: byId<HTMLInputElement>("ut-url"),
+	utUser: byId<HTMLInputElement>("ut-user"),
+	utPass: byId<HTMLInputElement>("ut-pass"),
+	utInsecure: byId<HTMLInputElement>("ut-insecure"),
 	ddHost: byId<HTMLInputElement>("dd-host"),
 	ddPort: byId<HTMLInputElement>("dd-port"),
 	ddUser: byId<HTMLInputElement>("dd-user"),
@@ -398,6 +426,30 @@ function resetFormFields(): void {
 	els.dwLoc.value = "";
 	els.dwPaused.checked = false;
 	els.dwInsecure.checked = false;
+	els.qbUrl.value = "";
+	els.qbUser.value = "";
+	els.qbPass.value = "";
+	els.qbCat.value = "";
+	els.qbLoc.value = "";
+	els.qbPaused.checked = false;
+	els.qbInsecure.checked = false;
+	els.trUrl.value = "";
+	els.trUser.value = "";
+	els.trPass.value = "";
+	els.trLoc.value = "";
+	els.trPaused.checked = false;
+	els.trInsecure.checked = false;
+	els.rtUrl.value = "";
+	els.rtUser.value = "";
+	els.rtPass.value = "";
+	els.rtLabel.value = "";
+	els.rtLoc.value = "";
+	els.rtPaused.checked = false;
+	els.rtInsecure.checked = false;
+	els.utUrl.value = "";
+	els.utUser.value = "";
+	els.utPass.value = "";
+	els.utInsecure.checked = false;
 	els.ddHost.value = "";
 	els.ddPort.value = "58846";
 	els.ddUser.value = "";
@@ -434,6 +486,38 @@ function populateForm(d: Destination): void {
 				d.protocolVersion === undefined ? "auto" : String(d.protocolVersion);
 			els.ddPaused.checked = !!d.addPaused;
 			els.ddInsecure.checked = !!d.insecure;
+			return;
+		case "qbittorrent":
+			els.qbUrl.value = d.url;
+			els.qbUser.value = d.username ?? "";
+			els.qbPass.value = d.password ?? "";
+			els.qbCat.value = d.category ?? "";
+			els.qbLoc.value = d.downloadLocation ?? "";
+			els.qbPaused.checked = !!d.addPaused;
+			els.qbInsecure.checked = !!d.insecure;
+			return;
+		case "transmission":
+			els.trUrl.value = d.url;
+			els.trUser.value = d.username ?? "";
+			els.trPass.value = d.password ?? "";
+			els.trLoc.value = d.downloadLocation ?? "";
+			els.trPaused.checked = !!d.addPaused;
+			els.trInsecure.checked = !!d.insecure;
+			return;
+		case "rutorrent":
+			els.rtUrl.value = d.url;
+			els.rtUser.value = d.username ?? "";
+			els.rtPass.value = d.password ?? "";
+			els.rtLabel.value = d.label ?? "";
+			els.rtLoc.value = d.downloadLocation ?? "";
+			els.rtPaused.checked = !!d.addPaused;
+			els.rtInsecure.checked = !!d.insecure;
+			return;
+		case "utorrent":
+			els.utUrl.value = d.url;
+			els.utUser.value = d.username;
+			els.utPass.value = d.password;
+			els.utInsecure.checked = !!d.insecure;
 			return;
 	}
 }
@@ -539,6 +623,88 @@ async function onSave(): Promise<void> {
 			if (loc) built.downloadLocation = loc;
 			if (els.ddPaused.checked) built.addPaused = true;
 			if (els.ddInsecure.checked) built.insecure = true;
+			dest = built;
+			break;
+		}
+		case "qbittorrent": {
+			const url = els.qbUrl.value.trim();
+			if (!url) return;
+			const built: QbittorrentDestination = {
+				id,
+				name,
+				kind: "qbittorrent",
+				url,
+			};
+			const user = els.qbUser.value.trim();
+			if (user) {
+				built.username = user;
+				built.password = els.qbPass.value;
+			}
+			const cat = els.qbCat.value.trim();
+			if (cat) built.category = cat;
+			const loc = els.qbLoc.value.trim();
+			if (loc) built.downloadLocation = loc;
+			if (els.qbPaused.checked) built.addPaused = true;
+			if (els.qbInsecure.checked) built.insecure = true;
+			dest = built;
+			break;
+		}
+		case "transmission": {
+			const url = els.trUrl.value.trim();
+			if (!url) return;
+			const built: TransmissionDestination = {
+				id,
+				name,
+				kind: "transmission",
+				url,
+			};
+			const user = els.trUser.value.trim();
+			if (user) {
+				built.username = user;
+				built.password = els.trPass.value;
+			}
+			const loc = els.trLoc.value.trim();
+			if (loc) built.downloadLocation = loc;
+			if (els.trPaused.checked) built.addPaused = true;
+			if (els.trInsecure.checked) built.insecure = true;
+			dest = built;
+			break;
+		}
+		case "rutorrent": {
+			const url = els.rtUrl.value.trim();
+			if (!url) return;
+			const built: RutorrentDestination = {
+				id,
+				name,
+				kind: "rutorrent",
+				url,
+			};
+			const user = els.rtUser.value.trim();
+			if (user) {
+				built.username = user;
+				built.password = els.rtPass.value;
+			}
+			const label = els.rtLabel.value.trim();
+			if (label) built.label = label;
+			const loc = els.rtLoc.value.trim();
+			if (loc) built.downloadLocation = loc;
+			if (els.rtPaused.checked) built.addPaused = true;
+			if (els.rtInsecure.checked) built.insecure = true;
+			dest = built;
+			break;
+		}
+		case "utorrent": {
+			const url = els.utUrl.value.trim();
+			if (!url) return;
+			const built: UtorrentDestination = {
+				id,
+				name,
+				kind: "utorrent",
+				url,
+				username: els.utUser.value,
+				password: els.utPass.value,
+			};
+			if (els.utInsecure.checked) built.insecure = true;
 			dest = built;
 			break;
 		}
@@ -770,13 +936,10 @@ function renderRow(dest: Destination, index: number): HTMLLIElement {
 	body.append(name, sub);
 	btn.append(body);
 
-	// Auto-start toggle for Deluge destinations in view mode (the
-	// upload-mode list). CSS hides it on narrow windows. Click is
+	// Auto-start toggle for destinations that support add-paused, in view
+	// mode (the upload-mode list). CSS hides it on narrow windows. Click is
 	// stopPropagated so it doesn't trigger the row's upload action.
-	if (
-		!view.editMode &&
-		(dest.kind === "deluge-daemon" || dest.kind === "deluge-web")
-	) {
+	if (!view.editMode && supportsAddPaused(dest)) {
 		const auto = document.createElement("label");
 		auto.className = "autostart-toggle";
 		auto.title = "Auto-start (toggle off to add paused)";
@@ -893,13 +1056,39 @@ function describeDest(d: Destination, pre?: PreflightStatus): string {
 				loc ? ` → ${loc}` : ""
 			}${v}`;
 		}
+		case "qbittorrent": {
+			const loc = d.downloadLocation ?? pre?.defaultDownloadLocation;
+			return `qBittorrent · ${d.url}${loc ? ` → ${loc}` : ""}${v}`;
+		}
+		case "transmission": {
+			const loc = d.downloadLocation ?? pre?.defaultDownloadLocation;
+			return `Transmission · ${d.url}${loc ? ` → ${loc}` : ""}${v}`;
+		}
+		case "rutorrent":
+			return `ruTorrent · ${d.url}${
+				d.downloadLocation ? ` → ${d.downloadLocation}` : ""
+			}`;
+		case "utorrent":
+			return `µTorrent · ${d.url}`;
 	}
+}
+
+function supportsAddPaused(
+	d: Destination,
+): d is Destination & { addPaused?: boolean } {
+	return (
+		d.kind === "deluge-daemon" ||
+		d.kind === "deluge-web" ||
+		d.kind === "qbittorrent" ||
+		d.kind === "transmission" ||
+		d.kind === "rutorrent"
+	);
 }
 
 async function setAddPaused(id: string, addPaused: boolean): Promise<void> {
 	const destinations = view.config.destinations.map((d) => {
 		if (d.id !== id) return d;
-		if (d.kind === "deluge-daemon" || d.kind === "deluge-web") {
+		if (supportsAddPaused(d)) {
 			return { ...d, addPaused };
 		}
 		return d;

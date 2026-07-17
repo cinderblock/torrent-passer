@@ -13,8 +13,12 @@ WebView2 on Windows) for a small binary and fast cold start.
   [Releases](https://github.com/cinderblock/torrent-passer/releases), or grab
   a recent CI run's artifacts.
 - Destination drivers:
-  - **POST URL** — `multipart/form-data` with the torrent file in a configurable
-    form field, plus arbitrary headers and extra form fields.
+  - **qBittorrent** — WebUI API v2 (`auth/login` cookie session +
+    `torrents/add`). Save path, category, add paused. Leave the username
+    empty to use qBittorrent's "bypass authentication for localhost" mode.
+  - **Transmission** — JSON-RPC (`torrent-add` with base64 metainfo, the
+    409 `X-Transmission-Session-Id` handshake, optional Basic auth).
+    Download dir, add paused; duplicates count as success.
   - **Deluge WebUI** — `/upload` + `web.add_torrents` against the Deluge
     Web UI (port 8112). Supports per-destination download location and
     "add paused".
@@ -22,6 +26,11 @@ WebView2 on Windows) for a small binary and fast cold start.
     [`deluge-rpc-socket`](https://github.com/cinderblock/node-deluge-rpc).
     Defaults to protocol version 1 (Deluge 2.x). Set `insecure` for
     self-signed certs.
+  - **ruTorrent** — `php/addtorrent.php` multipart upload with optional
+    Basic auth, label, download directory, and start-stopped.
+  - **µTorrent (classic)** — WebUI `token.html` + `action=add-file`.
+  - **POST URL** — `multipart/form-data` with the torrent file in a configurable
+    form field, plus arbitrary headers and extra form fields.
 
 ## Develop
 

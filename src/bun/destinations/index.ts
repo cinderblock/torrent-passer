@@ -2,7 +2,11 @@ import type { Destination, PreflightStatus, UploadResult } from "../rpc";
 import { delugeDaemonDriver } from "./deluge-daemon";
 import { delugeWebDriver } from "./deluge-web";
 import { postUrlDriver } from "./post-url";
+import { qbittorrentDriver } from "./qbittorrent";
+import { rutorrentDriver } from "./rutorrent";
+import { transmissionDriver } from "./transmission";
 import type { DestinationDriver, UploadContext } from "./types";
+import { utorrentDriver } from "./utorrent";
 
 function driverFor(dest: Destination): DestinationDriver {
 	switch (dest.kind) {
@@ -12,6 +16,14 @@ function driverFor(dest: Destination): DestinationDriver {
 			return delugeWebDriver as DestinationDriver;
 		case "deluge-daemon":
 			return delugeDaemonDriver as DestinationDriver;
+		case "qbittorrent":
+			return qbittorrentDriver as DestinationDriver;
+		case "transmission":
+			return transmissionDriver as DestinationDriver;
+		case "rutorrent":
+			return rutorrentDriver as DestinationDriver;
+		case "utorrent":
+			return utorrentDriver as DestinationDriver;
 	}
 }
 
